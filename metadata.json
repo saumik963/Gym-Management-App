@@ -1,0 +1,6 @@
+{
+  "name": "Fitness Care Gym",
+  "description": "100% offline-first Gym Member Management PWA for managing members, monthly fees, collections, dues, and reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
