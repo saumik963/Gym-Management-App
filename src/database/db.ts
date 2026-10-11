@@ -1,11 +1,12 @@
 import Dexie, { type Table } from 'dexie';
-import { Member, Payment, GymSettings, Expense } from '../types';
+import { Member, Payment, GymSettings, Expense, MemberPhotoRecord } from '../types';
 
 export class GymDatabase extends Dexie {
   members!: Table<Member, string>;
   payments!: Table<Payment, string>;
   settings!: Table<GymSettings, string>;
   expenses!: Table<Expense, string>;
+  memberPhotos!: Table<MemberPhotoRecord, string>;
 
   constructor() {
     super('GymManagementDB');
@@ -15,6 +16,14 @@ export class GymDatabase extends Dexie {
       payments: 'id, memberId, month, year, status, [memberId+month+year], paymentDate',
       settings: 'key',
       expenses: 'id, month, year, date, expenseType'
+    });
+
+    this.version(2).stores({
+      members: 'id, memberId, name, phone, status, joiningDate',
+      payments: 'id, memberId, month, year, status, [memberId+month+year], paymentDate',
+      settings: 'key',
+      expenses: 'id, month, year, date, expenseType',
+      memberPhotos: 'memberId'
     });
   }
 }

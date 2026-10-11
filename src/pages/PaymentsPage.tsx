@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Member, Payment } from '../types';
 import { BulkPaymentView } from '../components/payments/BulkPaymentView';
 import { Badge } from '../components/common/Badge';
+import { MemberAvatar } from '../components/common/MemberAvatar';
 import { formatCurrency, formatDate, getMonthName } from '../utils/formatters';
 import { useSettings } from '../contexts/SettingsContext';
 import { generatePaymentReceiptPDF } from '../services/pdfService';
@@ -130,8 +131,13 @@ export const PaymentsPage: React.FC<PaymentsPageProps> = ({
                         <td className="p-3.5 pl-5 font-mono text-slate-500 text-xs">
                           {p.id}
                         </td>
-                        <td className="p-3.5 font-bold text-slate-900 dark:text-white">
-                          {member ? member.name : 'Unknown'}
+                        <td className="p-3.5">
+                          <div className="flex items-center space-x-2.5">
+                            <MemberAvatar member={member} size="xs" rounded="lg" />
+                            <span className="font-bold text-slate-900 dark:text-white">
+                              {member ? member.name : 'Unknown'}
+                            </span>
+                          </div>
                         </td>
                         <td className="p-3.5 font-semibold text-slate-700 dark:text-slate-300">
                           {getMonthName(p.month)} {p.year}

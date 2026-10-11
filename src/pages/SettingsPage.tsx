@@ -94,11 +94,11 @@ export const SettingsPage: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Currency Symbol
+                Currency Symbol (Default: ৳)
               </label>
               <input
                 type="text"
-                placeholder="e.g. ৳, $, ₹, €"
+                placeholder="৳"
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white rounded-xl border border-slate-200 dark:border-slate-700 font-bold"

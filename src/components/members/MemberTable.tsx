@@ -4,6 +4,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { Badge } from '../common/Badge';
 import { calculateMemberSummary } from '../../utils/calculations';
+import { MemberAvatar } from '../common/MemberAvatar';
 import { 
   Search, 
   Filter, 
@@ -219,13 +220,7 @@ export const MemberTable: React.FC<MemberTableProps> = ({
               {/* Header: Photo, Name, ID, Badges */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center space-x-3">
-                  <div className="w-11 h-11 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center overflow-hidden shrink-0 shadow-xs text-base">
-                    {member.photo ? (
-                      <img src={member.photo} alt={member.name} className="w-full h-full object-cover" />
-                    ) : (
-                      member.name.charAt(0).toUpperCase()
-                    )}
-                  </div>
+                  <MemberAvatar member={member} size="md" rounded="xl" />
                   <div>
                     <button
                       onClick={() => onViewMember(member)}
@@ -377,13 +372,7 @@ export const MemberTable: React.FC<MemberTableProps> = ({
                   className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
                 >
                   <td className="p-3.5 pl-5">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white font-bold flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
-                      {member.photo ? (
-                        <img src={member.photo} alt={member.name} className="w-full h-full object-cover" />
-                      ) : (
-                        member.name.charAt(0).toUpperCase()
-                      )}
-                    </div>
+                    <MemberAvatar member={member} size="sm" rounded="xl" />
                   </td>
                   <td className="p-3.5 font-mono font-bold text-slate-900 dark:text-white">
                     {member.memberId}

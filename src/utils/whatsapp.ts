@@ -25,6 +25,7 @@ export function generateInvoiceWhatsAppMessage(
   const gymName = settings.gymName || 'Fitness Care Gym';
   const payDate = formatDate(payment.paymentDate || new Date().toISOString());
   const monthName = getMonthName(payment.month);
+  const curr = settings.currency || '৳';
 
   return (
     `*${gymName.toUpperCase()}*\n` +
@@ -37,9 +38,9 @@ export function generateInvoiceWhatsAppMessage(
     `• *Phone:* ${member.phone}\n\n` +
     `*PAYMENT BREAKDOWN*\n` +
     `• *Billing Month:* ${monthName} ${payment.year}\n` +
-    `• *Monthly Fee:* ${settings.currency}${payment.monthlyFee}\n` +
-    `• *Collected Amount:* ${settings.currency}${payment.collectedAmount}\n` +
-    `• *Remaining Due:* ${settings.currency}${payment.remainingDue}\n` +
+    `• *Monthly Fee:* ${curr} ${payment.monthlyFee}\n` +
+    `• *Collected Amount:* ${curr} ${payment.collectedAmount}\n` +
+    `• *Remaining Due:* ${curr} ${payment.remainingDue}\n` +
     `• *Payment Method:* ${payment.paymentMethod}\n` +
     `• *Status:* *${payment.status.toUpperCase()}*\n\n` +
     `_${settings.receiptFooter || 'Thank you for staying fit with Fitness Care Gym! Stay Strong.'}_`
@@ -59,5 +60,11 @@ export function openWhatsAppInvoice(
     ? `https://wa.me/${formattedPhone}?text=${encodedText}`
     : `https://api.whatsapp.com/send?text=${encodedText}`;
 
-  window.open(url, '_blank');
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.target = '_blank';
+  anchor.rel = 'noopener noreferrer';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
 }

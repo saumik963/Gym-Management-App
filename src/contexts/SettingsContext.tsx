@@ -17,7 +17,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
       if (saved) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        const resolvedCurrency = (parsed.currency && parsed.currency !== '$') ? parsed.currency : '৳';
+        return { ...DEFAULT_SETTINGS, ...parsed, currency: resolvedCurrency };
       }
     } catch {
       // Ignore fallback
@@ -32,13 +34,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const dbSettings = await db.settings.get('config');
         if (dbSettings) {
           setSettings(prev => {
-            const merged = { ...prev, ...dbSettings };
+            const resolvedCurrency = (dbSettings.currency && dbSettings.currency !== '$') ? dbSettings.currency : '৳';
+            const merged = { ...prev, ...dbSettings, currency: resolvedCurrency };
             localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(merged));
             return merged;
           });
         } else {
           // Initialize DB with default
-          await db.settings.put({ ...settings, key: 'config' } as any);
+          await db.settings.put({ ...settings, currency: '৳', key: 'config' } as any);
         }
       } catch (err) {
         console.error('Failed to load settings from db:', err);

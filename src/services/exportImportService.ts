@@ -1,7 +1,8 @@
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { db } from '../database/db';
-import { Member, Payment, BackupData, ImportSummary, GymSettings } from '../types';
+import { Member, Payment, BackupData, ImportSummary, GymSettings, BackupPhotoItem } from '../types';
+import { blobToBase64, base64ToBlob, resizeImageToBlob } from './photoService';
 
 /**
  * EXPORT FUNCTIONS
@@ -11,14 +12,30 @@ export async function exportAllJSON(settings: GymSettings): Promise<string> {
   const members = await db.members.toArray();
   const payments = await db.payments.toArray();
   const expenses = await db.expenses.toArray();
+  const photoRecords = await db.memberPhotos.toArray();
+
+  const photos: BackupPhotoItem[] = [];
+  for (const record of photoRecords) {
+    try {
+      const dataUrl = await blobToBase64(record.blob);
+      photos.push({
+        memberId: record.memberId,
+        dataUrl,
+        mimeType: record.mimeType,
+      });
+    } catch (err) {
+      console.warn(`Failed to export photo for member ${record.memberId}:`, err);
+    }
+  }
 
   const backup: BackupData = {
-    version: '1.0',
+    version: '1.1',
     exportedAt: new Date().toISOString(),
     settings,
     members,
     payments,
     expenses,
+    photos,
   };
 
   return JSON.stringify(backup, null, 2);
@@ -86,6 +103,7 @@ export async function exportPaymentsCSV(): Promise<string> {
 export async function exportToXML(settings: GymSettings): Promise<string> {
   const members = await db.members.toArray();
   const payments = await db.payments.toArray();
+  const photoRecords = await db.memberPhotos.toArray();
 
   const escapeXml = (str: any) =>
     String(str ?? '')
@@ -136,6 +154,22 @@ export async function exportToXML(settings: GymSettings): Promise<string> {
   }
   xml += '  </Payments>\n';
 
+  // Export Photos
+  xml += '  <Photos>\n';
+  for (const pr of photoRecords) {
+    try {
+      const dataUrl = await blobToBase64(pr.blob);
+      xml += '    <Photo>\n';
+      xml += `      <MemberId>${pr.memberId}</MemberId>\n`;
+      xml += `      <MimeType>${pr.mimeType}</MimeType>\n`;
+      xml += `      <Data>${dataUrl}</Data>\n`;
+      xml += '    </Photo>\n';
+    } catch (err) {
+      // Continue safely
+    }
+  }
+  xml += '  </Photos>\n';
+
   xml += '</GymBackup>';
   return xml;
 }
@@ -151,6 +185,7 @@ export async function importFromJSON(
   const summary: ImportSummary = {
     importedMembersCount: 0,
     importedPaymentsCount: 0,
+    importedPhotosCount: 0,
     skippedMembersCount: 0,
     skippedPaymentsCount: 0,
     errors: [],
@@ -168,6 +203,7 @@ export async function importFromJSON(
       await db.members.clear();
       await db.payments.clear();
       await db.expenses.clear();
+      await db.memberPhotos.clear();
     }
 
     const existingMembers = new Set((await db.members.toArray()).map(m => m.id));
@@ -230,8 +266,159 @@ export async function importFromJSON(
         }
       }
     }
+
+    // Restore Profile Photos
+    if (data.photos && Array.isArray(data.photos)) {
+      for (const photoItem of data.photos) {
+        if (!photoItem.memberId || !photoItem.dataUrl) continue;
+        try {
+          const fullBlob = base64ToBlob(photoItem.dataUrl, photoItem.mimeType);
+          const thumbnailBlob = await resizeImageToBlob(fullBlob, 150, 150, 'image/jpeg', 0.8);
+          await db.memberPhotos.put({
+            memberId: photoItem.memberId,
+            blob: fullBlob,
+            thumbnailBlob,
+            mimeType: photoItem.mimeType || 'image/jpeg',
+            size: fullBlob.size,
+            updatedAt: new Date().toISOString(),
+          });
+          summary.importedPhotosCount = (summary.importedPhotosCount || 0) + 1;
+        } catch (photoErr) {
+          console.warn(`Failed to restore photo for ${photoItem.memberId}:`, photoErr);
+          // Allow member record to load safely with default avatar
+        }
+      }
+    }
   } catch (err: any) {
     summary.errors.push(`JSON Parse Error: ${err?.message || 'Unknown error'}`);
+  }
+
+  return summary;
+}
+
+export async function importFromXML(
+  xmlContent: string,
+  mode: 'merge' | 'replace'
+): Promise<ImportSummary> {
+  const summary: ImportSummary = {
+    importedMembersCount: 0,
+    importedPaymentsCount: 0,
+    importedPhotosCount: 0,
+    skippedMembersCount: 0,
+    skippedPaymentsCount: 0,
+    errors: [],
+  };
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlContent, 'application/xml');
+
+    const parseError = doc.querySelector('parsererror');
+    if (parseError) {
+      summary.errors.push(`XML Parse Error: ${parseError.textContent || 'Malformed XML file'}`);
+      return summary;
+    }
+
+    if (mode === 'replace') {
+      await db.members.clear();
+      await db.payments.clear();
+      await db.expenses.clear();
+      await db.memberPhotos.clear();
+    }
+
+    // 1. Members
+    const memberNodes = doc.querySelectorAll('Members > Member');
+    for (const node of Array.from(memberNodes)) {
+      const id = node.querySelector('Id')?.textContent || `MEM-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+      const memberId = node.querySelector('MemberId')?.textContent || '';
+      const name = node.querySelector('Name')?.textContent || '';
+
+      if (!memberId || !name) {
+        summary.skippedMembersCount++;
+        continue;
+      }
+
+      const member: Member = {
+        id,
+        memberId,
+        name,
+        phone: node.querySelector('Phone')?.textContent || '',
+        address: node.querySelector('Address')?.textContent || '',
+        joiningDate: node.querySelector('JoiningDate')?.textContent || new Date().toISOString().split('T')[0],
+        monthlyFee: Number(node.querySelector('MonthlyFee')?.textContent || 1000),
+        weight: Number(node.querySelector('Weight')?.textContent || 70),
+        height: Number(node.querySelector('Height')?.textContent || 170),
+        gender: (node.querySelector('Gender')?.textContent || 'male').toLowerCase() as any,
+        status: (node.querySelector('Status')?.textContent || 'active').toLowerCase() as any,
+        notes: node.querySelector('Notes')?.textContent || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await db.members.put(member);
+      summary.importedMembersCount++;
+    }
+
+    // 2. Payments
+    const paymentNodes = doc.querySelectorAll('Payments > Payment');
+    for (const node of Array.from(paymentNodes)) {
+      const id = node.querySelector('Id')?.textContent;
+      const memberId = node.querySelector('MemberId')?.textContent;
+      if (!id || !memberId) {
+        summary.skippedPaymentsCount++;
+        continue;
+      }
+
+      const monthlyFee = Number(node.querySelector('MonthlyFee')?.textContent || 1000);
+      const collectedAmount = Number(node.querySelector('CollectedAmount')?.textContent || 0);
+
+      const payment: Payment = {
+        id,
+        memberId,
+        month: Number(node.querySelector('Month')?.textContent || 1),
+        year: Number(node.querySelector('Year')?.textContent || 2026),
+        monthlyFee,
+        collectedAmount,
+        remainingDue: Number(node.querySelector('RemainingDue')?.textContent ?? (monthlyFee - collectedAmount)),
+        status: (node.querySelector('Status')?.textContent || 'Unpaid') as any,
+        paymentDate: node.querySelector('PaymentDate')?.textContent || '',
+        paymentMethod: (node.querySelector('PaymentMethod')?.textContent || 'Cash') as any,
+        notes: node.querySelector('Notes')?.textContent || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await db.payments.put(payment);
+      summary.importedPaymentsCount++;
+    }
+
+    // 3. Photos
+    const photoNodes = doc.querySelectorAll('Photos > Photo');
+    for (const node of Array.from(photoNodes)) {
+      const memberId = node.querySelector('MemberId')?.textContent;
+      const data = node.querySelector('Data')?.textContent;
+      const mimeType = node.querySelector('MimeType')?.textContent || 'image/jpeg';
+
+      if (memberId && data) {
+        try {
+          const fullBlob = base64ToBlob(data, mimeType);
+          const thumbnailBlob = await resizeImageToBlob(fullBlob, 150, 150, 'image/jpeg', 0.8);
+          await db.memberPhotos.put({
+            memberId,
+            blob: fullBlob,
+            thumbnailBlob,
+            mimeType,
+            size: fullBlob.size,
+            updatedAt: new Date().toISOString(),
+          });
+          summary.importedPhotosCount = (summary.importedPhotosCount || 0) + 1;
+        } catch (photoErr) {
+          console.warn(`Failed to restore XML photo for ${memberId}:`, photoErr);
+        }
+      }
+    }
+  } catch (err: any) {
+    summary.errors.push(`XML Import Error: ${err?.message || 'Failed to parse file'}`);
   }
 
   return summary;

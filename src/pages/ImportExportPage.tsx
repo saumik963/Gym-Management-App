@@ -7,7 +7,8 @@ import {
   exportPaymentsCSV, 
   exportToXML, 
   importFromJSON, 
-  importFromExcel 
+  importFromExcel,
+  importFromXML 
 } from '../services/exportImportService';
 import { ImportSummary } from '../types';
 import { ConfirmModal } from '../components/common/ConfirmModal';
@@ -20,7 +21,8 @@ import {
   FileCode, 
   CheckCircle2, 
   AlertTriangle, 
-  RefreshCw 
+  RefreshCw,
+  ImageIcon 
 } from 'lucide-react';
 
 export const ImportExportPage: React.FC = () => {
@@ -29,28 +31,43 @@ export const ImportExportPage: React.FC = () => {
   const [importMode, setImportMode] = useState<'merge' | 'replace'>('merge');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [exportingStatus, setExportingStatus] = useState<string | null>(null);
 
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   const [showReplaceConfirm, setShowReplaceConfirm] = useState(false);
 
   // Export handlers
   const handleExportJSON = async () => {
-    const json = await exportAllJSON(settings);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Gym_Backup_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
+    setExportingStatus('Exporting complete JSON backup with photos...');
+    try {
+      const json = await exportAllJSON(settings);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Gym_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      setExportingStatus('JSON backup downloaded successfully!');
+      setTimeout(() => setExportingStatus(null), 3500);
+    } catch (err: any) {
+      setExportingStatus(`Export error: ${err?.message || 'Failed'}`);
+    }
   };
 
   const handleExportExcel = async () => {
-    const blob = await exportToExcel();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Gym_Backup_${new Date().toISOString().split('T')[0]}.xlsx`;
-    a.click();
+    setExportingStatus('Generating Excel workbook...');
+    try {
+      const blob = await exportToExcel();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Gym_Backup_${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.click();
+      setExportingStatus('Excel file downloaded!');
+      setTimeout(() => setExportingStatus(null), 3000);
+    } catch (err: any) {
+      setExportingStatus(`Export error: ${err?.message || 'Failed'}`);
+    }
   };
 
   const handleExportCSV = async () => {
@@ -64,13 +81,20 @@ export const ImportExportPage: React.FC = () => {
   };
 
   const handleExportXML = async () => {
-    const xml = await exportToXML(settings);
-    const blob = new Blob([xml], { type: 'application/xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Gym_Backup_${new Date().toISOString().split('T')[0]}.xml`;
-    a.click();
+    setExportingStatus('Exporting complete XML backup with photos...');
+    try {
+      const xml = await exportToXML(settings);
+      const blob = new Blob([xml], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Gym_Backup_${new Date().toISOString().split('T')[0]}.xml`;
+      a.click();
+      setExportingStatus('XML backup downloaded successfully!');
+      setTimeout(() => setExportingStatus(null), 3500);
+    } catch (err: any) {
+      setExportingStatus(`Export error: ${err?.message || 'Failed'}`);
+    }
   };
 
   // Import trigger
@@ -104,6 +128,9 @@ export const ImportExportPage: React.FC = () => {
       if (fileName.endsWith('.json')) {
         const text = await selectedFile.text();
         summary = await importFromJSON(text, importMode);
+      } else if (fileName.endsWith('.xml')) {
+        const text = await selectedFile.text();
+        summary = await importFromXML(text, importMode);
       } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
         const arrayBuffer = await selectedFile.arrayBuffer();
         summary = await importFromExcel(arrayBuffer, importMode);
@@ -111,9 +138,10 @@ export const ImportExportPage: React.FC = () => {
         summary = {
           importedMembersCount: 0,
           importedPaymentsCount: 0,
+          importedPhotosCount: 0,
           skippedMembersCount: 0,
           skippedPaymentsCount: 0,
-          errors: ['Unsupported file format. Please upload JSON or Excel (.xlsx) file.'],
+          errors: ['Unsupported file format. Please upload JSON, XML, or Excel (.xlsx) file.'],
         };
       }
 
@@ -123,6 +151,7 @@ export const ImportExportPage: React.FC = () => {
       setImportSummary({
         importedMembersCount: 0,
         importedPaymentsCount: 0,
+        importedPhotosCount: 0,
         skippedMembersCount: 0,
         skippedPaymentsCount: 0,
         errors: [err?.message || 'Failed to process file import'],
@@ -154,9 +183,16 @@ export const ImportExportPage: React.FC = () => {
         <div>
           <h3 className="font-bold text-slate-900 dark:text-white text-base">Export Backup Options</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Download complete backup files stored locally in IndexedDB
+            Download complete backup files stored locally in IndexedDB (including offline member profile photos)
           </p>
         </div>
+
+        {exportingStatus && (
+          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center space-x-2">
+            <RefreshCw className="w-4 h-4 animate-spin text-emerald-600" />
+            <span>{exportingStatus}</span>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
           {/* JSON Export */}
@@ -170,7 +206,7 @@ export const ImportExportPage: React.FC = () => {
             </div>
             <h4 className="font-bold text-slate-900 dark:text-white text-sm">Full JSON Backup</h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Complete app structure with members, payments, and settings.
+              Complete app structure with members, profile photos (Base64), payments, and settings.
             </p>
           </div>
 
@@ -215,7 +251,7 @@ export const ImportExportPage: React.FC = () => {
             </div>
             <h4 className="font-bold text-slate-900 dark:text-white text-sm">XML Backup</h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Standard XML structured schema database backup.
+              Standard XML backup with full member profiles, photos (Base64), and payment ledgers.
             </p>
           </div>
         </div>
@@ -268,12 +304,12 @@ export const ImportExportPage: React.FC = () => {
               <span className="text-slate-500 dark:text-slate-400"> or drag and drop</span>
               <input
                 type="file"
-                accept=".json,.xlsx,.xls,.csv"
+                accept=".json,.xml,.xlsx,.xls,.csv"
                 onChange={handleFileSelect}
                 className="hidden"
               />
             </label>
-            <p className="text-[11px] text-slate-400 mt-1">Supported formats: .JSON, .XLSX, .CSV</p>
+            <p className="text-[11px] text-slate-400 mt-1">Supported formats: .JSON, .XML, .XLSX, .CSV</p>
 
             {selectedFile && (
               <div className="mt-4 p-2.5 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 rounded-xl font-bold inline-flex items-center space-x-2 text-xs">
@@ -301,7 +337,7 @@ export const ImportExportPage: React.FC = () => {
               <CheckCircle2 className="w-5 h-5 text-emerald-500" />
               <span>Import Execution Summary</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-700 dark:text-slate-300">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-slate-700 dark:text-slate-300">
               <div>
                 <span className="text-slate-400 block">Members Imported:</span>
                 <span className="font-bold">{importSummary.importedMembersCount}</span>
@@ -309,6 +345,10 @@ export const ImportExportPage: React.FC = () => {
               <div>
                 <span className="text-slate-400 block">Payments Imported:</span>
                 <span className="font-bold">{importSummary.importedPaymentsCount}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block">Photos Restored:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{importSummary.importedPhotosCount || 0}</span>
               </div>
               <div>
                 <span className="text-slate-400 block">Skipped:</span>

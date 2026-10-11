@@ -1,7 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, ensureMonthlyPaymentsGenerated, generateNextMemberId } from '../database/db';
-import { Member, Payment, Expense } from '../types';
+import { Member, Payment, Expense, MemberPhotoRecord } from '../types';
 import { useEffect, useState } from 'react';
+import { saveMemberPhoto, deleteMemberPhoto, getMemberPhoto } from '../services/photoService';
 
 export function useGymData() {
   const [isInitializing, setIsInitializing] = useState(true);
@@ -62,10 +63,19 @@ export function useGymData() {
   };
 
   // Helper functions
-  const addMember = async (memberData: Omit<Member, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addMember = async (
+    memberData: Omit<Member, 'id' | 'createdAt' | 'updatedAt'>,
+    photoBlobs?: { fullBlob: Blob; thumbnailBlob?: Blob }
+  ) => {
     const now = new Date().toISOString();
     const id = `MEM-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     
+    // If photoBlobs provided, store photo in separate memberPhotos table
+    if (photoBlobs?.fullBlob) {
+      await saveMemberPhoto(id, photoBlobs.fullBlob, photoBlobs.thumbnailBlob);
+      memberData.photo = 'local';
+    }
+
     const newMember: Member = {
       ...memberData,
       id,
@@ -103,34 +113,61 @@ export function useGymData() {
     return newMember;
   };
 
-  const updateMember = async (id: string, updates: Partial<Member>) => {
+  const updateMember = async (
+    id: string,
+    updates: Partial<Member>,
+    photoBlobs?: { fullBlob: Blob; thumbnailBlob?: Blob } | null
+  ) => {
     const now = new Date().toISOString();
+
+    // Photo updates
+    if (photoBlobs === null) {
+      // User requested photo removal
+      await deleteMemberPhoto(id);
+      updates.photo = undefined;
+    } else if (photoBlobs?.fullBlob) {
+      // User replaced photo with new image
+      await saveMemberPhoto(id, photoBlobs.fullBlob, photoBlobs.thumbnailBlob);
+      updates.photo = 'local';
+    }
+
     await db.members.update(id, {
       ...updates,
       updatedAt: now,
     });
   };
 
-  const deleteMemberWithHistory = async (memberId: string): Promise<{ deletedMember: Member; deletedPayments: Payment[] }> => {
+  const deleteMemberWithHistory = async (
+    memberId: string
+  ): Promise<{ deletedMember: Member; deletedPayments: Payment[]; deletedPhoto?: MemberPhotoRecord }> => {
     const member = await db.members.get(memberId);
     if (!member) throw new Error('Member not found');
 
     const memberPayments = await db.payments.where('memberId').equals(memberId).toArray();
+    const photoRecord = await getMemberPhoto(memberId);
 
-    // Delete in transaction
-    await db.transaction('rw', db.members, db.payments, async () => {
+    // Delete member, payments, and photo record in a safe transaction
+    await db.transaction('rw', db.members, db.payments, db.memberPhotos, async () => {
       await db.payments.where('memberId').equals(memberId).delete();
+      await db.memberPhotos.delete(memberId);
       await db.members.delete(memberId);
     });
 
-    return { deletedMember: member, deletedPayments: memberPayments };
+    return { deletedMember: member, deletedPayments: memberPayments, deletedPhoto: photoRecord };
   };
 
-  const restoreMemberWithHistory = async (member: Member, paymentsList: Payment[]) => {
-    await db.transaction('rw', db.members, db.payments, async () => {
+  const restoreMemberWithHistory = async (
+    member: Member,
+    paymentsList: Payment[],
+    photoRecord?: MemberPhotoRecord
+  ) => {
+    await db.transaction('rw', db.members, db.payments, db.memberPhotos, async () => {
       await db.members.put(member);
       for (const p of paymentsList) {
         await db.payments.put(p);
+      }
+      if (photoRecord) {
+        await db.memberPhotos.put(photoRecord);
       }
     });
   };

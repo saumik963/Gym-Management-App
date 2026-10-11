@@ -3,6 +3,7 @@ import { Member, Payment } from '../../types';
 import { useSettings } from '../../contexts/SettingsContext';
 import { formatCurrency, getMonthName } from '../../utils/formatters';
 import { Badge } from '../common/Badge';
+import { MemberAvatar } from '../common/MemberAvatar';
 import { generateCollectionReportPDF } from '../../services/pdfService';
 import { Save, Printer, Download, Search, Check, RefreshCw } from 'lucide-react';
 
@@ -184,13 +185,16 @@ export const BulkPaymentView: React.FC<BulkPaymentViewProps> = ({
                   className="bg-slate-50/60 dark:bg-slate-800/40 rounded-xl p-3 border border-slate-200/80 dark:border-slate-800 space-y-2 text-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-slate-900 dark:text-white text-sm block">
-                        {m.name}
-                      </span>
-                      <span className="font-mono text-[10px] text-slate-400">
-                        {m.memberId} • Fee: {formatCurrency(m.monthlyFee, settings.currency)}
-                      </span>
+                    <div className="flex items-center space-x-2.5">
+                      <MemberAvatar member={m} size="xs" rounded="lg" />
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-white text-sm block">
+                          {m.name}
+                        </span>
+                        <span className="font-mono text-[10px] text-slate-400">
+                          {m.memberId} • Fee: {formatCurrency(m.monthlyFee, settings.currency)}
+                        </span>
+                      </div>
                     </div>
                     <Badge status={status} />
                   </div>
@@ -267,8 +271,11 @@ export const BulkPaymentView: React.FC<BulkPaymentViewProps> = ({
                       <td className="p-3.5 pl-5 font-mono font-bold text-slate-900 dark:text-white">
                         {m.memberId}
                       </td>
-                      <td className="p-3.5 font-bold text-slate-900 dark:text-white">
-                        {m.name}
+                      <td className="p-3.5">
+                        <div className="flex items-center space-x-2.5">
+                          <MemberAvatar member={m} size="xs" rounded="lg" />
+                          <span className="font-bold text-slate-900 dark:text-white">{m.name}</span>
+                        </div>
                       </td>
                       <td className="p-3.5 text-slate-500 dark:text-slate-400">{m.phone}</td>
                       <td className="p-3.5 font-semibold">

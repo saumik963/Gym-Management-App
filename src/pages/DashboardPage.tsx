@@ -5,6 +5,7 @@ import { calculateDashboardStats } from '../utils/calculations';
 import { formatCurrency, formatDate, getMonthName } from '../utils/formatters';
 import { StatCard } from '../components/common/StatCard';
 import { Badge } from '../components/common/Badge';
+import { MemberAvatar } from '../components/common/MemberAvatar';
 import { seedSampleData } from '../database/sampleData';
 import { 
   Users, 
@@ -406,9 +407,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               dueMembers.map(({ member, dueAmount }) => (
                 <div key={member.id} className="py-2.5 flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-bold text-xs">
-                      {member.name.charAt(0)}
-                    </div>
+                    <MemberAvatar member={member} size="xs" rounded="full" />
                     <div>
                       <button
                         onClick={() => onViewMember(member)}

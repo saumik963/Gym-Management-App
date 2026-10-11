@@ -66,6 +66,7 @@ export interface DashboardStats {
 export interface ImportSummary {
   importedMembersCount: number;
   importedPaymentsCount: number;
+  importedPhotosCount?: number;
   skippedMembersCount: number;
   skippedPaymentsCount: number;
   errors: string[];
@@ -97,6 +98,21 @@ export interface Expense {
   updatedAt: string;
 }
 
+export interface MemberPhotoRecord {
+  memberId: string; // Primary key (references Member.id)
+  blob: Blob;
+  thumbnailBlob?: Blob;
+  mimeType: string;
+  size: number;
+  updatedAt: string;
+}
+
+export interface BackupPhotoItem {
+  memberId: string;
+  dataUrl: string; // Base64 data URL
+  mimeType: string;
+}
+
 export interface BackupData {
   version: string;
   exportedAt: string;
@@ -104,4 +120,5 @@ export interface BackupData {
   members: Member[];
   payments: Payment[];
   expenses?: Expense[];
+  photos?: BackupPhotoItem[];
 }

@@ -1,14 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Download, X } from 'lucide-react';
 
 export const PwaInstallPrompt: React.FC = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const promptRef = useRef<any>(null);
+  const [canInstall, setCanInstall] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
+    // Avoid running prompt inside cross-origin iframe
+    let isIframe = false;
+    try {
+      isIframe = window.self !== window.top;
+    } catch {
+      isIframe = true;
+    }
+
+    if (isIframe) {
+      return;
+    }
+
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      // Store event in ref instead of state to prevent React from inspecting cross-origin window properties
+      promptRef.current = e;
+      setCanInstall(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -19,15 +34,21 @@ export const PwaInstallPrompt: React.FC = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
+    const promptEvent = promptRef.current;
+    if (!promptEvent) return;
+    try {
+      promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      if (choice?.outcome === 'accepted') {
+        promptRef.current = null;
+        setCanInstall(false);
+      }
+    } catch (err) {
+      console.error('Failed to trigger PWA install prompt:', err);
     }
   };
 
-  if (!deferredPrompt || isDismissed) return null;
+  if (!canInstall || isDismissed) return null;
 
   return (
     <div className="bg-emerald-600 text-white px-4 py-2.5 flex items-center justify-between text-xs sm:text-sm font-medium shadow-md">

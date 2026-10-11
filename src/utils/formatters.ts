@@ -14,11 +14,30 @@ export const MONTH_NAMES = [
 ];
 
 export function formatCurrency(amount: number, currencySymbol: string = '৳'): string {
+  const symbol = currencySymbol || '৳';
   if (isNaN(amount) || amount === null || amount === undefined) {
-    return `${currencySymbol} 0`;
+    return `${symbol} 0`;
   }
   const formatted = Math.round(amount).toLocaleString('en-US');
-  return `${currencySymbol} ${formatted}`;
+  return `${symbol} ${formatted}`;
+}
+
+/**
+ * Formats currency specifically for PDF generation.
+ * Standard jsPDF Type 1 fonts (Helvetica/Times) only support WinAnsi encoding and cannot render
+ * Bengali Unicode '৳' (U+09F3), which causes it to render as 'ó'.
+ * This function cleanly maps '৳' or 'tk' to 'Tk' for flawless PDF rendering.
+ */
+export function formatPdfCurrency(amount: number, currencySymbol: string = '৳'): string {
+  if (isNaN(amount) || amount === null || amount === undefined) {
+    return 'Tk 0';
+  }
+  const formatted = Math.round(amount).toLocaleString('en-US');
+  let symbol = currencySymbol?.trim();
+  if (!symbol || symbol === '৳' || symbol.toLowerCase() === 'tk') {
+    symbol = 'Tk';
+  }
+  return `${symbol} ${formatted}`;
 }
 
 export function formatDate(dateString?: string): string {

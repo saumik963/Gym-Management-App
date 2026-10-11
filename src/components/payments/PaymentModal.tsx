@@ -4,6 +4,7 @@ import { Member, Payment, PaymentMethod } from '../../types';
 import { useSettings } from '../../contexts/SettingsContext';
 import { formatCurrency, getMonthName } from '../../utils/formatters';
 import { calculateMemberSummary } from '../../utils/calculations';
+import { MemberAvatar } from '../common/MemberAvatar';
 import { DollarSign, Search, Calendar, CreditCard, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface PaymentModalProps {
@@ -176,10 +177,15 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                         : 'hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300'
                     }`}
                   >
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{m.memberId}</span>
-                      <span className="font-medium">{m.name}</span>
-                      <span className="text-[11px] text-slate-400">({m.phone})</span>
+                    <div className="flex items-center space-x-2.5">
+                      <MemberAvatar member={m} size="xs" rounded="lg" allowPreview={false} />
+                      <div>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{m.memberId}</span>
+                          <span className="font-medium">{m.name}</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400 block">({m.phone})</span>
+                      </div>
                     </div>
                     <span className="text-xs font-semibold">{formatCurrency(m.monthlyFee, settings.currency)}</span>
                   </div>
@@ -191,12 +197,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               )
             ) : selectedMember ? (
               <div className="p-2.5 flex items-center justify-between bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200">
-                <div className="flex items-center space-x-2.5">
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white font-mono text-[11px] font-bold">
-                    {selectedMember.memberId}
-                  </span>
-                  <span className="font-bold text-sm">{selectedMember.name}</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">({selectedMember.phone})</span>
+                <div className="flex items-center space-x-3">
+                  <MemberAvatar member={selectedMember} size="sm" rounded="xl" />
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-1.5 py-0.5 rounded-md bg-emerald-600 text-white font-mono text-[10px] font-bold">
+                        {selectedMember.memberId}
+                      </span>
+                      <span className="font-bold text-sm">{selectedMember.name}</span>
+                    </div>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 block">{selectedMember.phone}</span>
+                  </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-semibold">{formatCurrency(selectedMember.monthlyFee, settings.currency)}</span>

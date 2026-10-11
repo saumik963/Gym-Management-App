@@ -5,6 +5,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { formatCurrency, formatDate, getMonthName } from '../../utils/formatters';
 import { calculateMemberSummary } from '../../utils/calculations';
 import { Badge } from '../common/Badge';
+import { MemberAvatar } from '../common/MemberAvatar';
 import { generateMemberProfilePDF, generatePaymentReceiptPDF } from '../../services/pdfService';
 import { 
   User, 
@@ -63,13 +64,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
         {/* Profile Card Header */}
         <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-2xl overflow-hidden shrink-0 shadow-md">
-              {member.photo ? (
-                <img src={member.photo} alt={member.name} className="w-full h-full object-cover" />
-              ) : (
-                member.name.charAt(0).toUpperCase()
-              )}
-            </div>
+            <MemberAvatar member={member} size="lg" rounded="2xl" preferFull={true} />
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">{member.name}</h3>

@@ -74,8 +74,11 @@ export const AppRoutes: React.FC = () => {
     setIsPaymentModalOpen(true);
   };
 
-  const handleSaveMemberQuick = async (formData: any) => {
-    await addMember(formData);
+  const handleSaveMemberQuick = async (
+    formData: any,
+    photoBlobs?: { fullBlob: Blob; thumbnailBlob?: Blob } | null
+  ) => {
+    await addMember(formData, photoBlobs || undefined);
     addToast({
       type: 'success',
       title: 'Member Registered',

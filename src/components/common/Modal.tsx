@@ -52,7 +52,7 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity no-print"
           />
 
           {/* Modal Content */}
@@ -64,7 +64,7 @@ export const Modal: React.FC<ModalProps> = ({
             className={`relative w-full ${widthClasses[maxWidth]} bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 z-10 overflow-hidden flex flex-col max-h-[90vh] my-auto`}
           >
             {/* Header */}
-            <div className="flex items-start justify-between p-5 border-b border-slate-200/80 dark:border-slate-800">
+            <div className="flex items-start justify-between p-5 border-b border-slate-200/80 dark:border-slate-800 no-print">
               <div>
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
                   {title}

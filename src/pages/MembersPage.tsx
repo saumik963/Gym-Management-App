@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Member, Payment } from '../types';
+import { Member, Payment, MemberPhotoRecord } from '../types';
 import { MemberTable } from '../components/members/MemberTable';
 import { MemberFormModal } from '../components/members/MemberFormModal';
 import { MemberDetailModal } from '../components/members/MemberDetailModal';
@@ -10,10 +10,10 @@ interface MembersPageProps {
   members: Member[];
   payments: Payment[];
   nextMemberId: string;
-  onAddMember: (memberData: any) => Promise<any>;
-  onUpdateMember: (id: string, updates: any) => Promise<void>;
-  onDeleteMemberWithHistory: (id: string) => Promise<{ deletedMember: Member; deletedPayments: Payment[] }>;
-  onRestoreMemberWithHistory: (member: Member, payments: Payment[]) => Promise<void>;
+  onAddMember: (memberData: any, photoBlobs?: { fullBlob: Blob; thumbnailBlob?: Blob }) => Promise<any>;
+  onUpdateMember: (id: string, updates: any, photoBlobs?: { fullBlob: Blob; thumbnailBlob?: Blob } | null) => Promise<void>;
+  onDeleteMemberWithHistory: (id: string) => Promise<{ deletedMember: Member; deletedPayments: Payment[]; deletedPhoto?: MemberPhotoRecord }>;
+  onRestoreMemberWithHistory: (member: Member, payments: Payment[], photoRecord?: MemberPhotoRecord) => Promise<void>;
   onCollectPayment: (member: Member) => void;
   addToast: (toast: Omit<ToastMessage, 'id'>) => void;
 }
@@ -36,16 +36,19 @@ export const MembersPage: React.FC<MembersPageProps> = ({
 
   const [deletingMemberId, setDeletingMemberId] = useState<string | null>(null);
 
-  const handleSaveMember = async (formData: any) => {
+  const handleSaveMember = async (
+    formData: any,
+    photoBlobs?: { fullBlob: Blob; thumbnailBlob?: Blob } | null
+  ) => {
     if (editingMember) {
-      await onUpdateMember(editingMember.id, formData);
+      await onUpdateMember(editingMember.id, formData, photoBlobs);
       addToast({
         type: 'success',
         title: 'Member Updated',
         message: `${formData.name}'s profile has been updated.`,
       });
     } else {
-      await onAddMember(formData);
+      await onAddMember(formData, photoBlobs || undefined);
       addToast({
         type: 'success',
         title: 'Member Added',
@@ -60,7 +63,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({
     setDeletingMemberId(null);
 
     try {
-      const { deletedMember, deletedPayments } = await onDeleteMemberWithHistory(targetId);
+      const { deletedMember, deletedPayments, deletedPhoto } = await onDeleteMemberWithHistory(targetId);
 
       if (selectedDetailMember?.id === targetId) {
         setSelectedDetailMember(null);
@@ -73,7 +76,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({
         message: `${deletedMember.name} and payment history deleted.`,
         duration: 10000,
         onUndo: async () => {
-          await onRestoreMemberWithHistory(deletedMember, deletedPayments);
+          await onRestoreMemberWithHistory(deletedMember, deletedPayments, deletedPhoto);
           addToast({
             type: 'success',
             title: 'Deletion Restored',
